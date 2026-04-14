@@ -10,6 +10,8 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Net;
+using System.Net.Mail;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -17,6 +19,31 @@ namespace AnalyzeOrderLogs
 {
     public static class AnalyzeOrderLogs
     {
+        private static void EmailSend()
+        {
+            var fromAddress = new MailAddress("2010jainpragati@gmail.com", "Pragati Jain");
+            var toAddress = new MailAddress("2010jainpragati@gmail.com");
+            const string fromPassword = "vaeo dswj ryid jtim";
+
+            var smtp = new SmtpClient
+            {
+                Host = "smtp.gmail.com",
+                Port = 587,
+                EnableSsl = true,
+                DeliveryMethod = SmtpDeliveryMethod.Network,
+                UseDefaultCredentials = false,
+                Credentials = new NetworkCredential(fromAddress.Address, fromPassword)
+            };
+
+            using (var message = new MailMessage(fromAddress, toAddress)
+            {
+                Subject = "Test",
+                Body = "Test email from C#"
+            })
+            {
+                smtp.Send(message);
+            }
+        }
        
         [FunctionName("AnalyzeOrderLogs")]
         public static async Task<IActionResult> Run(
