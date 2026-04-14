@@ -18,7 +18,7 @@ namespace AnalyzeOrderLogs
 {
     public static class AnalyzeOrderLogs
     {
-        private static void EmailSend()
+        private static void EmailSend(string bodyData)
         {
             var fromAddress = new MailAddress("2010jainpragati@gmail.com", "Pragati Jain");
             var toAddress = new MailAddress("azuretest994@gmail.com");
@@ -37,7 +37,7 @@ namespace AnalyzeOrderLogs
             using (var message = new MailMessage(fromAddress, toAddress)
             {
                 Subject = "Azure function",
-                Body = "calling AnalyzeOrderLogs Azure function."
+                Body = bodyData
             })
             {
                 smtp.Send(message);
@@ -48,8 +48,7 @@ namespace AnalyzeOrderLogs
         public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequest req,
         ILogger log)
-        {
-            EmailSend();
+        {            
             // ----------------------------
             // 1. Query Application Insights
             // ----------------------------
@@ -165,7 +164,7 @@ namespace AnalyzeOrderLogs
                 Console.WriteLine(new string('-', 50));
 
                 #endregion
-
+                EmailSend(chatResponse.Value.Content);
                 return new OkObjectResult(chatResponse.Value.Content);
             }
             catch (Exception ex)
