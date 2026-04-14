@@ -1,6 +1,5 @@
 using Azure;
 using Azure.AI.Inference;
-using Azure.AI.OpenAI;
 using Azure.Identity;
 using Azure.Monitor.Query;
 using Azure.Monitor.Query.Models;
@@ -22,7 +21,7 @@ namespace AnalyzeOrderLogs
         private static void EmailSend()
         {
             var fromAddress = new MailAddress("2010jainpragati@gmail.com", "Pragati Jain");
-            var toAddress = new MailAddress("2010jainpragati@gmail.com");
+            var toAddress = new MailAddress("azuretest994@gmail.com");
             const string fromPassword = "vaeo dswj ryid jtim";
 
             var smtp = new SmtpClient
@@ -37,23 +36,24 @@ namespace AnalyzeOrderLogs
 
             using (var message = new MailMessage(fromAddress, toAddress)
             {
-                Subject = "Test",
-                Body = "Test email from C#"
+                Subject = "Azure function",
+                Body = "calling AnalyzeOrderLogs Azure function."
             })
             {
                 smtp.Send(message);
             }
         }
-       
+
         [FunctionName("AnalyzeOrderLogs")]
         public static async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequest req,
         ILogger log)
         {
+            EmailSend();
             // ----------------------------
             // 1. Query Application Insights
             // ----------------------------
-            
+
             var credential = new DefaultAzureCredential(
                             new DefaultAzureCredentialOptions
                             {
@@ -62,8 +62,8 @@ namespace AnalyzeOrderLogs
 
             var logsClient = new LogsQueryClient(credential);
 
-            string workspaceId  = "08b8300d-886d-4133-9f27-13e2359eec27";
-            
+            string workspaceId = "08b8300d-886d-4133-9f27-13e2359eec27";
+
             string kqlQuery = @"
                             AppExceptions
                             | where TimeGenerated >= ago(3d)
@@ -172,7 +172,7 @@ namespace AnalyzeOrderLogs
             {
                 Console.WriteLine($"Error querying logs: {ex.Message}");
                 return new BadRequestObjectResult("Error querying logs.");
-            }   
+            }
         }
     }
 }
