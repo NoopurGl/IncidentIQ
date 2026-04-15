@@ -23,7 +23,9 @@ namespace AnalyzeOrderLogs
 {
     public static class AnalyzeOrderLogs
     {
-    
+        private static readonly ILogger _logger;
+
+
         [FunctionName("AnalyzeOrderLogs")]
         public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequest req,
@@ -114,6 +116,9 @@ namespace AnalyzeOrderLogs
                 var  responseAi = await client.GetChatCompletionsAsync(options);
                 Console.WriteLine(responseAi.Value.Choices[0].Message.Content);     
                 var summary = responseAi.Value.Choices[0].Message.Content.ToString();
+
+                // Use _logger instead of Console.WriteLine
+                _logger.LogInformation("OpenAI Response: {Summary}", summary);
 
                 #endregion
 
