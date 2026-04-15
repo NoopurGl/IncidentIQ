@@ -91,11 +91,14 @@ namespace AnalyzeOrderLogs
                 //// ----------------------------
                 //// 3. Call Azure OpenAI
                 ////// ----------------------------
-                         
+
                 // Initialize the client
+
+                // Retrieve the key from your local.settings.json environment variables
+                string apiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_KEY");
                 var client = new OpenAIClient(
                     new Uri("https://azure-mnylsmii-eastus2.cognitiveservices.azure.com/"),
-                    new AzureKeyCredential("API_KEY"));
+                    new AzureKeyCredential(apiKey));
 
                 // Configure options with your DEPLOYMENT name (not model name)
                 var options = new ChatCompletionsOptions()
