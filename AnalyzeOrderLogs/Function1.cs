@@ -114,7 +114,7 @@ namespace AnalyzeOrderLogs
                 };
 
                 var  responseAi = await client.GetChatCompletionsAsync(options);
-                Console.WriteLine(responseAi.Value.Choices[0].Message.Content);     
+                //Console.WriteLine(responseAi.Value.Choices[0].Message.Content);     
                 var summary = responseAi.Value.Choices[0].Message.Content.ToString();
 
                 // Use _logger instead of Console.WriteLine
