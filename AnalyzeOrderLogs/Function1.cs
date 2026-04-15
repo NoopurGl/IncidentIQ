@@ -167,7 +167,7 @@ namespace AnalyzeOrderLogs
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error querying logs: {ex.Message}");
+                _logger.LogInformation($"Error querying logs: {ex.Message}");
                 return new BadRequestObjectResult("Error querying logs.");
             }
         }
