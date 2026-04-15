@@ -23,14 +23,15 @@ namespace AnalyzeOrderLogs
 {
     public static class AnalyzeOrderLogs
     {
-        private static readonly ILogger _logger;
+        
 
 
         [FunctionName("AnalyzeOrderLogs")]
         public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequest req,
         ILogger log)
-        {            
+        {
+            log.LogInformation("C# HTTP trigger function processed a request.");
             // ----------------------------
             // 1. Query Application Insights
             // ----------------------------
@@ -118,7 +119,7 @@ namespace AnalyzeOrderLogs
                 var summary = responseAi.Value.Choices[0].Message.Content.ToString();
 
                 // Use _logger instead of Console.WriteLine
-                _logger.LogInformation("OpenAI Response: {Summary}", summary);
+                log.LogInformation("OpenAI Response: {Summary}", summary);
 
                 #endregion
 
@@ -167,7 +168,7 @@ namespace AnalyzeOrderLogs
             }
             catch (Exception ex)
             {
-                _logger.LogInformation($"Error querying logs: {ex.Message}");
+                log.LogInformation($"Error querying logs: {ex.Message}");
                 return new BadRequestObjectResult("Error querying logs.");
             }
         }
