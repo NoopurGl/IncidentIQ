@@ -154,10 +154,49 @@ namespace AnalyzeOrderLogs
                 Credentials = new NetworkCredential(fromAddress.Address, fromPassword)
             };
 
+            StringBuilder tableRows = new StringBuilder();
+
+            var incident = JsonConvert.DeserializeObject<IncidentModel>(bodyData);
+
+            StringBuilder stepsHtml = new StringBuilder("<ul>");
+            foreach (var step in incident.next_steps)
+            {
+                stepsHtml.Append($"<li>{step}</li>");
+            }
+            stepsHtml.Append("</ul>");
+
+            string severityColor = "red";
+
+            tableRows.Append($@"
+    <tr>
+        <td>{DateTimeOffset.UtcNow}</td>
+        <td>{incident.incident_summary}</td>
+        <td>{incident.root_cause}</td>
+        <td>{stepsHtml}</td>
+        <td style='color:{severityColor}; font-weight:bold;'>High</td>
+    </tr>");
+
+            string body = $@"
+<html>
+<body style='font-family: Arial;'>
+    <table border='1' cellpadding='8' cellspacing='0' style='border-collapse: collapse; width:100%;'>
+        <tr style='background-color:#f2f2f2;'>
+            <th>Time Generated</th>
+            <th>Incident Summary</th>
+            <th>Root Cause</th>
+            <th>Next Steps</th>
+            <th>Severity</th>
+        </tr>
+        {tableRows}
+    </table>
+</body>
+</html>";
+
             using (var message = new MailMessage(fromAddress, toAddress)
             {
-                Subject = "Azure function",
-                Body = bodyData
+                Subject = "Incident Summary Of Exception",
+                Body = body,
+                IsBodyHtml = true
             })
             {
                 smtp.Send(message);
