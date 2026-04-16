@@ -11,11 +11,11 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Mail;
 using System.Text;
 using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using ChatCompletionsOptions = Azure.AI.OpenAI.ChatCompletionsOptions;
 using ChatRequestSystemMessage = Azure.AI.OpenAI.ChatRequestSystemMessage;
 using ChatRequestUserMessage = Azure.AI.OpenAI.ChatRequestUserMessage;
@@ -121,8 +121,8 @@ namespace AnalyzeOrderLogs
                 //// 5. send to work book
                 ////// ----------------------------
                 log.LogInformation("Info:Start PushToWorkBook");
-                await PushToWorkBook(summary,log);
-                
+                await PushToWorkBook(summary, log);
+
                 log.LogInformation("Info:Return summary");
                 return new OkObjectResult(responseAi.Value.Choices[0].Message.Content);
             }
@@ -207,7 +207,7 @@ namespace AnalyzeOrderLogs
         /// PushToWorkBook
         /// </summary>
         /// <param name="summary"></param>
-        private static async Task PushToWorkBook(string summary,ILogger log)
+        private static async Task PushToWorkBook(string summary, ILogger log)
         {
             var incident = JsonConvert.DeserializeObject<IncidentModel>(summary);
 
@@ -256,7 +256,7 @@ namespace AnalyzeOrderLogs
     {
         public string incident_summary { get; set; }
         public string root_cause { get; set; }
-        public string next_steps { get; set; }
+        public List<string> next_steps { get; set; }
     }
 
 
