@@ -1,0 +1,7 @@
+PROJECT ARCHITECTURE CONTEXT:
+- OrderService: Written in .NET 8, depends on SQL Azure and Redis Cache.
+- Dependency A: PaymentGateway (Third-party). If timeout occurs, it's usually a TLS issue.
+- Dependency B: InventoryService. Located in East US. High latency usually means regional congestion.
+- Common Errors: 
+  - ERR_001: Database deadlock in OrderDB. 
+  - ERR_002: Redis authentication failure.

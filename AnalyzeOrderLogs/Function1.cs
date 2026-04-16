@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Mail;
 using System.Text;
@@ -73,9 +74,18 @@ namespace AnalyzeOrderLogs
                 log.LogInformation("logsText pepared successfully");
 
                 //// ----------------------------
+                //// 2. Read RAG context
+                //// ----------------------------
+                string contextPath = Path.Combine(AppContext.BaseDirectory, "architecture_context.txt");
+                string architectureContext = File.Exists(contextPath)
+                    ? File.ReadAllText(contextPath)
+                    : "General OrderService architecture.";
+                log.LogInformation("architecture_context file read successfully");
+                ////-----------------------------
+
+                //// ----------------------------
                 //// 2. Build SRE Prompt
                 //// ----------------------------
-
                 string prompt = "You are an expert SRE. Analyze logs and return output ONLY in valid JSON format:\r\n\r\n{\r\n  \"incident_summary\": \"\",\r\n  \"root_cause\": \"\",\r\n  \"next_steps\": \"\"\r\n}\r\n\r\nDo not include markdown, headings, or explanations outside JSON.";
 
                 #region Using Azure Open AI
@@ -94,8 +104,13 @@ namespace AnalyzeOrderLogs
                 {
                     DeploymentName = "gpt-4o", // Must match the name in Azure AI Studio
                     Messages = {
-                        new ChatRequestSystemMessage("You are an expert SRE. Analyze logs and return output ONLY in valid JSON format:\r\n\r\n{\r\n  \"incident_summary\": \"\",\r\n  \"root_cause\": \"\",\r\n  \"next_steps\": \"\"\r\n}\r\n\r\nDo not include markdown, headings, or explanations outside JSON."),
+                        
+                        ////-------Response without RAG---------
+                        //new ChatRequestSystemMessage("You are an expert SRE. Analyze logs and return output ONLY in valid JSON format:\r\n\r\n{\r\n  \"incident_summary\": \"\",\r\n  \"root_cause\": \"\",\r\n  \"next_steps\": \"\"\r\n}\r\n\r\nDo not include markdown, headings, or explanations outside JSON."),
+                        //---------Response with RAG-----------
+                        new ChatRequestSystemMessage("You are an expert SRE. Analyze logs with  architectureContext "+ architectureContext+" and return output ONLY in valid JSON format:\r\n\r\n{\r\n  \"incident_summary\": \"\",\r\n  \"root_cause\": \"\",\r\n  \"next_steps\": \"\"\r\n}\r\n\r\nDo not include markdown, headings, or explanations outside JSON."),
                         new ChatRequestUserMessage($"Analyze these service logs:\n{logsText}")
+
                     },
                     Temperature = 0.2f
                 };

@@ -13,6 +13,9 @@
 	  <PackageReference Include="System.Memory.Data" Version="8.0.1" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="architecture_context.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="host.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
