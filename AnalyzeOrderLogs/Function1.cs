@@ -121,7 +121,7 @@ namespace AnalyzeOrderLogs
                 //// 5. send to work book
                 ////// ----------------------------
                 log.LogInformation("Info:Start PushToWorkBook");
-                PushToWorkBook(summary,log);
+                await PushToWorkBook(summary,log);
                 
                 log.LogInformation("Info:Return summary");
                 return new OkObjectResult(responseAi.Value.Choices[0].Message.Content);
@@ -168,7 +168,7 @@ namespace AnalyzeOrderLogs
         /// PushToWorkBook
         /// </summary>
         /// <param name="summary"></param>
-        private static async void PushToWorkBook(string summary,ILogger log)
+        private static async Task PushToWorkBook(string summary,ILogger log)
         {
             var incident = JsonConvert.DeserializeObject<IncidentModel>(summary);
 
