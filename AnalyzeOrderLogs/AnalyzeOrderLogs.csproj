@@ -6,6 +6,7 @@
   <ItemGroup>
     <PackageReference Include="Azure.AI.Inference" Version="1.0.0-beta.5" />
     <PackageReference Include="Azure.Identity" Version="1.17.1" />
+    <PackageReference Include="Azure.Monitor.Ingestion" Version="1.2.0" />
     <PackageReference Include="Azure.Monitor.Query" Version="1.7.1" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.5.0" />
 	 <PackageReference Include="Azure.AI.OpenAI" Version="1.0.0-beta.12" />

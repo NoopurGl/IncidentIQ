@@ -1,7 +1,7 @@
 using Azure;
-using Azure.AI.Inference;
 using Azure.AI.OpenAI;
 using Azure.Identity;
+using Azure.Monitor.Ingestion;
 using Azure.Monitor.Query;
 using Azure.Monitor.Query.Models;
 using Microsoft.AspNetCore.Http;
@@ -9,12 +9,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Net;
 using System.Net.Mail;
 using System.Text;
 using System.Threading.Tasks;
-using ChatCompletions = Azure.AI.OpenAI.ChatCompletions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using ChatCompletionsOptions = Azure.AI.OpenAI.ChatCompletionsOptions;
 using ChatRequestSystemMessage = Azure.AI.OpenAI.ChatRequestSystemMessage;
 using ChatRequestUserMessage = Azure.AI.OpenAI.ChatRequestUserMessage;
@@ -23,15 +24,12 @@ namespace AnalyzeOrderLogs
 {
     public static class AnalyzeOrderLogs
     {
-        
-
-
         [FunctionName("AnalyzeOrderLogs")]
         public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequest req,
         ILogger log)
         {
-            log.LogInformation("C# HTTP trigger function processed a request.");
+            log.LogInformation("Info:Start function processed a request.");
             // ----------------------------
             // 1. Query Application Insights
             // ----------------------------
@@ -57,13 +55,14 @@ namespace AnalyzeOrderLogs
             try
             {
                 // Run the query
+                log.LogInformation("Info:Start Run the KQL query");
                 Response<LogsQueryResult> response = await logsClient.QueryWorkspaceAsync(
                     workspaceId,
                     kqlQuery,
                     new QueryTimeRange(TimeSpan.FromDays(3)) // MUST match KQL//TimeSpan.FromHours(1) // Time range for query
                 );
 
-
+                log.LogInformation("Info:Run the KQL query successfully");
 
                 var logsText = new StringBuilder();
 
@@ -71,31 +70,18 @@ namespace AnalyzeOrderLogs
                 {
                     logsText.AppendLine(string.Join(" | ", row));
                 }
-
+                log.LogInformation("logsText pepared successfully");
 
                 //// ----------------------------
                 //// 2. Build SRE Prompt
                 //// ----------------------------
-                string prompt = $"""
-                                You are an SRE assistant.
 
-                                Summarize the following OrderService application logs:
-                                - Identify the main issue
-                                - Explain probable root cause
-                                - Mention impacted service
-                                - Suggest next steps
-
-                                Logs:
-                                {logsText}
-                                """;
-
+                string prompt = "You are an expert SRE. Analyze logs and return output ONLY in valid JSON format:\r\n\r\n{\r\n  \"incident_summary\": \"\",\r\n  \"root_cause\": \"\",\r\n  \"next_steps\": \"\"\r\n}\r\n\r\nDo not include markdown, headings, or explanations outside JSON.";
 
                 #region Using Azure Open AI
                 //// ----------------------------
                 //// 3. Call Azure OpenAI
                 ////// ----------------------------
-
-                // Initialize the client
 
                 // Retrieve the key from your local.settings.json environment variables
                 string apiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_KEY");
@@ -114,48 +100,12 @@ namespace AnalyzeOrderLogs
                     Temperature = 0.2f
                 };
 
-                var  responseAi = await client.GetChatCompletionsAsync(options);
-                //Console.WriteLine(responseAi.Value.Choices[0].Message.Content);     
+                log.LogInformation("Info:Prompt prepared and start calling Azure open AI");
+
+                var responseAi = await client.GetChatCompletionsAsync(options); ;
                 var summary = responseAi.Value.Choices[0].Message.Content.ToString();
 
-                // Use _logger instead of Console.WriteLine
-                log.LogInformation("OpenAI Response: {Summary}", summary);
-
-                #endregion
-
-                //// ----------------------------
-                //// 3. Call Git hub model
-                ////// ----------------------------
-                #region Using Git hub Model
-                //// 1. Setup GitHub Model Client
-                //// Get your token: https://github.com
-                //string githubPat = "{gitpat}";
-                //var chatClient = new ChatCompletionsClient(
-                //    new Uri("https://models.github.ai/inference"),
-                //    new AzureKeyCredential(githubPat));
-
-
-                ////// ----------------------------
-                ////// 4. Craft the Prompt for AI Analysis
-                ////// ----------------------------
-                //var options = new Azure.AI.Inference.ChatCompletionsOptions()
-                //{
-                //    // Change DeploymentName to ModelName
-                //    Model = "gpt-4o",
-                //    Messages = {
-                //          new ChatRequestSystemMessage("You are an expert SRE. Analyze logs and return output ONLY in valid JSON format:\r\n\r\n{\r\n  \"incident_summary\": \"\",\r\n  \"root_cause\": \"\",\r\n  \"next_steps\": \"\"\r\n}\r\n\r\nDo not include markdown, headings, or explanations outside JSON."),
-                //          new Azure.AI.Inference.ChatRequestUserMessage($"Analyze these service logs:\n{logsText}")
-                //    },
-                //    Temperature = 0.2f // Keep it concise and factual
-                //};
-                ////// ----------------------------
-                ////// 5. Get and Print the Analysis                
-                ////// ----------------------------
-                //Response<Azure.AI.Inference.ChatCompletions> chatResponseAi = await chatClient.CompleteAsync(options);
-                //Console.WriteLine("--- AI Analysis of Application Logs ---");
-                //Console.ForegroundColor = ConsoleColor.Green;
-                //Console.WriteLine(chatResponseAi.Value.Content);
-                //Console.WriteLine(new string('-', 50));
+                log.LogInformation("Info:Azure OpenAI Response recived successfully: {Summary}", summary);
 
                 #endregion
 
@@ -163,7 +113,17 @@ namespace AnalyzeOrderLogs
                 //// 4. Notification Alert
                 ////// ----------------------------
                 ///TODO: format the summary
+                log.LogInformation("Info:Start Notification Alert");
                 EmailSend(summary);
+                log.LogInformation("Info:Notification alert send successfully");
+
+                //// ----------------------------
+                //// 5. send to work book
+                ////// ----------------------------
+                log.LogInformation("Info:Start PushToWorkBook");
+                PushToWorkBook(summary,log);
+                
+                log.LogInformation("Info:Return summary");
                 return new OkObjectResult(responseAi.Value.Choices[0].Message.Content);
             }
             catch (Exception ex)
@@ -203,5 +163,62 @@ namespace AnalyzeOrderLogs
                 smtp.Send(message);
             }
         }
+
+        /// <summary>
+        /// PushToWorkBook
+        /// </summary>
+        /// <param name="summary"></param>
+        private static async void PushToWorkBook(string summary,ILogger log)
+        {
+            var incident = JsonConvert.DeserializeObject<IncidentModel>(summary);
+
+            var credential = new DefaultAzureCredential(
+                                  new DefaultAzureCredentialOptions
+                                  {
+                                      TenantId = "1991046d-90f4-4267-b457-28fea4f23b80"
+                                  });
+            // 1. Initialize the client (Better to do this as a Singleton if possible)
+            var endpoint = new Uri("https://myorderservicedce-3ifr.southindia-1.ingest.monitor.azure.com");
+            var clientLogAnalytics = new LogsIngestionClient(endpoint, credential);
+
+            var dcrImmutableId = "dcr-6842f8716a8b49f4b10c11501e89374f"; // From your DCR
+            var streamName = "Custom-AI_Incidents_CL"; // Must start with Custom-
+
+            // 2. Prepare the data payload
+            var logData = new[]
+            {
+                new {
+                    IncidentSummary = incident.incident_summary,
+                    RootCause = incident.root_cause,
+                    NextSteps = string.Join(", ", incident.next_steps), // Ensure it's a string or flat object
+                    Severity = "High",
+                    TimeGenerated = DateTimeOffset.UtcNow
+                }
+                };
+
+            // 3. Push to Log Analytics
+            try
+            {
+                await clientLogAnalytics.UploadAsync(dcrImmutableId, streamName, logData);
+                log.LogInformation($"Info:AI Analysis pushed to Log Analytics successfully");
+            }
+            catch (Exception ex)
+            {
+                log.LogInformation($"Info:Failed to push to Log Analytics: {ex.Message}");
+            }
+
+        }
     }
+
+    /// <summary>
+    /// model
+    /// </summary>
+    public class IncidentModel
+    {
+        public string incident_summary { get; set; }
+        public string root_cause { get; set; }
+        public string next_steps { get; set; }
+    }
+
+
 }
