@@ -86,7 +86,7 @@ namespace AnalyzeOrderLogs
                 //// ----------------------------
                 //// 2. Build SRE Prompt
                 //// ----------------------------
-                string prompt = "You are an expert SRE. Analyze logs and return output ONLY in valid JSON format:\r\n\r\n{\r\n  \"incident_summary\": \"\",\r\n  \"root_cause\": \"\",\r\n  \"next_steps\": \"\"\r\n}\r\n\r\nDo not include markdown, headings, or explanations outside JSON.";
+                string prompt = "You are an expert SRE. Analyze logs and return output ONLY in valid JSON format:\r\n\r\n{\r\n  \"incident_summary\": \"\",\r\n  \"root_cause\": \"\",\r\n  \"severity\": \"\",\r\n  \"next_steps\": \"\"\r\n}\r\n\r\nDo not include markdown, headings, or explanations outside JSON.";
 
                 #region Using Azure Open AI
                 //// ----------------------------
@@ -108,7 +108,7 @@ namespace AnalyzeOrderLogs
                         ////-------Response without RAG---------
                         //new ChatRequestSystemMessage("You are an expert SRE. Analyze logs and return output ONLY in valid JSON format:\r\n\r\n{\r\n  \"incident_summary\": \"\",\r\n  \"root_cause\": \"\",\r\n  \"next_steps\": \"\"\r\n}\r\n\r\nDo not include markdown, headings, or explanations outside JSON."),
                         //---------Response with RAG-----------
-                        new ChatRequestSystemMessage("You are an expert SRE. Analyze logs with  architectureContext "+ architectureContext+" and return output ONLY in valid JSON format:\r\n\r\n{\r\n  \"incident_summary\": \"\",\r\n  \"root_cause\": \"\",\r\n  \"next_steps\": \"\"\r\n}\r\n\r\nDo not include markdown, headings, or explanations outside JSON."),
+                        new ChatRequestSystemMessage("You are an expert SRE. Analyze logs with  architectureContext "+ architectureContext+" and return output ONLY in valid JSON format:\r\n\r\n{\r\n  \"incident_summary\": \"\",\r\n  \"root_cause\": \"\",\r\n  \"severity\": \"\",\r\n  \"next_steps\": \"\"\r\n}\r\n\r\nDo not include markdown, headings, or explanations outside JSON."),
                         new ChatRequestUserMessage($"Analyze these service logs:\n{logsText}")
 
                     },
@@ -245,7 +245,7 @@ namespace AnalyzeOrderLogs
                     IncidentSummary = incident.incident_summary,
                     RootCause = incident.root_cause,
                     NextSteps = string.Join(", ", incident.next_steps), // Ensure it's a string or flat object
-                    Severity = "High",
+                    Severity = incident.severity,
                     TimeGenerated = DateTimeOffset.UtcNow
                 }
                 };
@@ -271,6 +271,7 @@ namespace AnalyzeOrderLogs
     {
         public string incident_summary { get; set; }
         public string root_cause { get; set; }
+        public string severity { get; set; }
         public List<string> next_steps { get; set; }
     }
 
