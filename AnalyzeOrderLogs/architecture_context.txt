@@ -1,7 +1,104 @@
-PROJECT ARCHITECTURE CONTEXT:
-- OrderService: Written in .NET 8, depends on SQL Azure and Redis Cache.
-- Dependency A: PaymentGateway (Third-party). If timeout occurs, it's usually a TLS issue.
-- Dependency B: InventoryService. Located in East US. High latency usually means regional congestion.
-- Common Errors: 
-  - ERR_001: Database deadlock in OrderDB. 
-  - ERR_002: Redis authentication failure.
+================================================================================
+ORDER SERVICE - MASTER ARCHITECTURAL CONTEXT & SRE KNOWLEDGE BASE
+================================================================================
+
+1. PROJECT CORE METADATA
+--------------------------------------------------------------------------------
+Project Name        : OrderService
+Version             : 2.3.1
+Application Type    : ASP.NET Core Microservice
+Business Domain     : E-Commerce Order Management
+Environment         : Production
+System Criticality  : High (Tier 1 Service)
+
+2. SYSTEM ARCHITECTURE & TECH STACK
+--------------------------------------------------------------------------------
+Style               : Microservices
+Hosting             : Azure App Service
+API Gateway         : Azure API Management
+Communication       : REST (Synchronous) + Azure Service Bus (Asynchronous)
+Database (Primary)  : Azure SQL Database (OrderDB)
+Cache Layer         : Azure Cache for Redis (South India)
+Storage             : Azure Blob Storage
+Identity/Security   : Azure AD + Azure Key Vault
+AIOps Engine        : Azure Function (Incident Engine) + Azure OpenAI (LLM)
+
+3. SERVICE DEPENDENCY MAP
+--------------------------------------------------------------------------------
+UPSTREAM (Frontend/Clients):
+- WebPortal  : If down, no customer orders can be submitted.
+- MobileApp  : If down, mobile users unable to place orders.
+
+DOWNSTREAM (External Services):
+- PaymentService   : [CRITICAL] Checkout fails if unavailable.
+- InventoryService : [CRITICAL] Cannot validate stock; prevents order creation.
+- NotificationService: [MEDIUM] Delayed Emails/SMS notifications.
+- InvoiceGenerator : [MEDIUM] Post-order document generation failure.
+
+4. DATABASE SCHEMA (Core Tables)
+--------------------------------------------------------------------------------
+- Orders, OrderItems, Payments, Customers, Shipments
+
+5. BUSINESS RULES & CONSTRAINTS
+--------------------------------------------------------------------------------
+- Approval Rule   : Orders with total amount > $10,000 require Manager Approval.
+- Modification    : Shipped orders are immutable (cannot be modified).
+- Deletion        : Processed orders cannot be deleted from the system.
+- Anti-Spam       : Duplicate orders (same items/customer) blocked within 5 minutes.
+
+6. HIGH-RISK ENDPOINTS
+--------------------------------------------------------------------------------
+- POST /api/orders      : Risk: Complex orchestration (Payment + DB + Inventory).
+- PUT /api/orders/{id}  : Risk: Transactional deadlocks under high load.
+- DELETE /api/orders/{id}: Risk: Finance/FK dependency violations.
+- GET /api/orders/{id}   : Risk: Cache misses causing Azure SQL CPU spikes.
+
+7. MAPPING LOG ERRORS TO ROOT CAUSES (RAG DATA)
+--------------------------------------------------------------------------------
+[ERR_001] DATABASE CONNECTIVITY
+- Log Match : "Connection pool exhausted" OR "Cannot open database"
+- Root Cause: Leaked SQL connections or reaching Max Concurrent Connections.
+- Severity  : Critical | Owner: App Team | Action: Scale DTUs or fix connection disposal.
+
+[ERR_002] CONCURRENCY & LOCKS
+- Log Match : "Transaction deadlock victim"
+- Root Cause: Concurrent order updates in Azure SQL.
+- Severity  : High | Owner: App Team | Action: Implement exponential backoff/retry.
+
+[ERR_003] DATA INTEGRITY
+- Log Match : "Violation of PRIMARY KEY constraint"
+- Root Cause: Duplicate Order ID generation or double-click POST.
+- Severity  : Medium | Owner: App Team | Action: Verify ID generation logic.
+
+[ERR_004] BUSINESS RESTRICTIONS
+- Log Match : "Order exceeds manager approval threshold"
+- Root Cause: Missing 'ManagerApproved' flag for orders > $10k.
+- Severity  : Low | Owner: Sales Ops | Action: Trigger approval workflow.
+
+[ERR_005] INFRASTRUCTURE TIMEOUTS
+- Log Match : "SQL timeout while inserting" OR "SQL query timeout"
+- Root Cause: Blocking queries or missing indexes on OrderDB.
+- Severity  : Critical | Owner: DB Team | Action: Audit long-running SQL plans.
+
+[ERR_006] STATE CONFLICTS
+- Log Match : "REFERENCE constraint" OR "Foreign key conflict"
+- Root Cause: Attempting to Delete/Update orders in 'Shipped' or 'Processed' state.
+- Severity  : Medium | Owner: App Team | Action: Fix state-machine logic in UI.
+
+[ERR_007] SECURITY & COMPLIANCE
+- Log Match : "Customer account is inactive"
+- Root Cause: BlockedCustomer list check failure.
+- Severity  : Medium | Owner: Security | Action: Audit account status changes.
+
+8. RAG INSTRUCTIONS FOR AI ENGINE
+--------------------------------------------------------------------------------
+When generating an Incident Summary:
+1. Mention the specific impacted Upstream/Downstream dependency.
+2. Identify the Probable Root Cause by matching log patterns to ERR_XXX codes.
+3. Explicitly state the Business Impact (e.g., "Customer checkout blocked").
+4. Assign the correct Owner (e.g., App Team, DB Team, or Integration Team).
+5. Avoid generic explanations; use the Remediation provided in this document.
+================================================================================
+apps-fileview.texmex_20260408.09_p0
+architecture.txt
+Displaying architecture.txt.
